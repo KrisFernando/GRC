@@ -165,8 +165,9 @@ variable "s3_enable_versioning" {
 variable "s3_lifecycle_rules" {
   description = "S3 lifecycle rules for object management"
   type = list(object({
-    id      = string
-    enabled = bool
+    id     = string
+    status = optional(string, "Enabled")
+    filter = optional(object({ prefix = string }))
     transitions = list(object({
       days          = number
       storage_class = string
@@ -174,11 +175,16 @@ variable "s3_lifecycle_rules" {
     expiration = object({
       days = number
     })
+    noncurrent_version_transitions = optional(list(object({
+      days          = number
+      storage_class = string
+    })), [])
+    noncurrent_version_expiration = optional(object({ days = number }))
   }))
   default = [
     {
-      id      = "archive-old-files"
-      enabled = true
+      id     = "archive-old-files"
+      status = "Enabled"
       transitions = [
         {
           days          = 90
@@ -236,7 +242,7 @@ variable "keycloak_url" {
 variable "keycloak_realm" {
   description = "Keycloak realm name"
   type        = string
-  default     = "grc"
+  default     = "gigachad-grc"
 }
 
 variable "keycloak_client_id" {
@@ -249,4 +255,34 @@ variable "keycloak_client_secret" {
   description = "Keycloak client secret"
   type        = string
   sensitive   = true
+}
+
+variable "keycloak_admin_password" {
+  description = "Keycloak admin password (stored in Secrets Manager)"
+  type        = string
+  sensitive   = true
+}
+
+variable "jwt_secret" {
+  description = "JWT signing secret — base64-encoded, 64+ chars (openssl rand -base64 64)"
+  type        = string
+  sensitive   = true
+}
+
+variable "encryption_key" {
+  description = "Data encryption key — hex-encoded, 64 chars (openssl rand -hex 32)"
+  type        = string
+  sensitive   = true
+}
+
+variable "session_secret" {
+  description = "Session secret — base64-encoded, 64+ chars (openssl rand -base64 64)"
+  type        = string
+  sensitive   = true
+}
+
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications (leave empty to disable)"
+  type        = string
+  default     = ""
 }

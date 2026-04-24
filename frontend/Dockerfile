@@ -51,8 +51,8 @@ RUN apk upgrade --no-cache
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx config (path relative to context which is repo root)
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx config template (upstream server names substituted at startup)
+COPY frontend/nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Nginx runs on port 80 by default
 EXPOSE 80
@@ -61,4 +61,8 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget -q --spider http://localhost:80/ || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+# Substitute service host env vars into the nginx config at startup, then launch nginx.
+# envsubst is pre-installed in nginx:alpine.
+# In ECS the *_SERVICE_HOST vars resolve to Cloud Map DNS entries.
+# In docker-compose they resolve to Docker network service names.
+CMD ["/bin/sh", "-c", "envsubst '${CONTROLS_SERVICE_HOST} ${FRAMEWORKS_SERVICE_HOST} ${POLICIES_SERVICE_HOST} ${TPRM_SERVICE_HOST} ${TRUST_SERVICE_HOST} ${AUDIT_SERVICE_HOST}' < /etc/nginx/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

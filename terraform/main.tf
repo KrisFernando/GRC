@@ -15,22 +15,14 @@ terraform {
     }
   }
 
-  # S3 backend for state management
-  # IMPORTANT: Before enabling, create the S3 bucket and DynamoDB table:
-  #   1. aws s3api create-bucket --bucket ${var.terraform_state_bucket} --region ${var.aws_region}
-  #   2. aws s3api put-bucket-versioning --bucket ${var.terraform_state_bucket} --versioning-configuration Status=Enabled
-  #   3. aws s3api put-bucket-encryption --bucket ${var.terraform_state_bucket} --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"aws:kms"}}]}'
-  #   4. aws dynamodb create-table --table-name terraform-lock --attribute-definitions AttributeName=LockID,AttributeType=S --key-schema AttributeName=LockID,KeyType=HASH --billing-mode PAY_PER_REQUEST
-  #
-  # Then uncomment and configure:
-  # backend "s3" {
-  #   bucket         = "gigachad-grc-terraform-state"
-  #   key            = "gigachad-grc/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   encrypt        = true
-  #   dynamodb_table = "terraform-lock"
-  #   kms_key_id     = "alias/terraform-state"
-  # }
+  # S3 backend — bucket and DynamoDB table created by CloudFormation prior to terraform init
+  backend "s3" {
+    bucket         = "gigachad-grc-terraform-state"
+    key            = "gigachad-grc/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-lock"
+  }
 }
 
 provider "aws" {
@@ -63,13 +55,13 @@ locals {
 module "vpc" {
   source = "./modules/vpc"
 
-  name_prefix         = local.name_prefix
-  vpc_cidr            = var.vpc_cidr
-  availability_zones  = var.availability_zones
-  public_subnet_cidrs = var.public_subnet_cidrs
+  name_prefix          = local.name_prefix
+  vpc_cidr             = var.vpc_cidr
+  availability_zones   = var.availability_zones
+  public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
-  enable_nat_gateway  = var.enable_nat_gateway
-  single_nat_gateway  = var.single_nat_gateway
+  enable_nat_gateway   = var.enable_nat_gateway
+  single_nat_gateway   = var.single_nat_gateway
 
   tags = local.common_tags
 }
@@ -92,11 +84,11 @@ module "alb" {
 
   name_prefix        = local.name_prefix
   vpc_id             = module.vpc.vpc_id
-  public_subnet_ids  = module.vpc.public_subnet_ids
+  subnet_ids         = module.vpc.public_subnet_ids
   security_group_ids = [module.security_groups.alb_security_group_id]
 
-  certificate_arn    = var.ssl_certificate_arn
-  enable_https       = var.enable_https
+  certificate_arn = var.ssl_certificate_arn
+  enable_https    = var.enable_https
 
   tags = local.common_tags
 }
@@ -105,22 +97,22 @@ module "alb" {
 module "rds" {
   source = "./modules/rds"
 
-  name_prefix            = local.name_prefix
-  vpc_id                 = module.vpc.vpc_id
-  private_subnet_ids     = module.vpc.private_subnet_ids
-  security_group_ids     = [module.security_groups.rds_security_group_id]
+  name_prefix        = local.name_prefix
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  security_group_ids = [module.security_groups.rds_security_group_id]
 
-  engine_version         = var.rds_engine_version
-  instance_class         = var.rds_instance_class
-  allocated_storage      = var.rds_allocated_storage
-  max_allocated_storage  = var.rds_max_allocated_storage
+  engine_version        = var.rds_engine_version
+  instance_class        = var.rds_instance_class
+  allocated_storage     = var.rds_allocated_storage
+  max_allocated_storage = var.rds_max_allocated_storage
 
-  database_name          = var.database_name
-  master_username        = var.database_username
-  master_password        = var.database_password
+  database_name   = var.database_name
+  master_username = var.database_username
+  master_password = var.database_password
 
   backup_retention_period = var.rds_backup_retention_period
-  multi_az               = var.rds_multi_az
+  multi_az                = var.rds_multi_az
 
   tags = local.common_tags
 }
@@ -134,9 +126,9 @@ module "redis" {
   private_subnet_ids = module.vpc.private_subnet_ids
   security_group_ids = [module.security_groups.redis_security_group_id]
 
-  node_type          = var.redis_node_type
-  num_cache_nodes    = var.redis_num_cache_nodes
-  engine_version     = var.redis_engine_version
+  node_type       = var.redis_node_type
+  num_cache_nodes = var.redis_num_cache_nodes
+  engine_version  = var.redis_engine_version
 
   tags = local.common_tags
 }
@@ -145,8 +137,8 @@ module "redis" {
 module "s3" {
   source = "./modules/s3"
 
-  name_prefix    = local.name_prefix
-  random_suffix  = random_id.suffix.hex
+  name_prefix   = local.name_prefix
+  random_suffix = random_id.suffix.hex
 
   enable_versioning = var.s3_enable_versioning
   lifecycle_rules   = var.s3_lifecycle_rules
@@ -154,16 +146,56 @@ module "s3" {
   tags = local.common_tags
 }
 
+# AWS Secrets Manager — stores all sensitive credentials
+module "secrets" {
+  source = "./modules/secrets"
+
+  name_prefix = local.name_prefix
+  environment = var.environment
+
+  database_username = var.database_username
+  database_password = var.database_password
+  database_host     = module.rds.endpoint
+  database_port     = module.rds.port
+  database_name     = var.database_name
+
+  redis_host     = module.redis.endpoint
+  redis_port     = module.redis.port
+  redis_password = module.redis.auth_token
+
+  keycloak_url            = var.keycloak_url
+  keycloak_realm          = var.keycloak_realm
+  keycloak_client_id      = var.keycloak_client_id
+  keycloak_client_secret  = var.keycloak_client_secret
+  keycloak_admin_password = var.keycloak_admin_password
+
+  jwt_secret      = var.jwt_secret
+  encryption_key  = var.encryption_key
+  session_secret  = var.session_secret
+
+  s3_bucket_name = module.s3.bucket_name
+  s3_access_key  = ""
+  s3_secret_key  = ""
+}
+
 # ECS Cluster and Services
 module "ecs" {
   source = "./modules/ecs"
 
   name_prefix        = local.name_prefix
+  environment        = var.environment
+  aws_region         = var.aws_region
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
+  security_group_ids = [module.security_groups.ecs_security_group_id]
 
-  alb_target_group_arn = module.alb.target_group_arn
-  security_group_ids   = [module.security_groups.ecs_security_group_id]
+  # ALB — only frontend gets a target group; backends use Cloud Map DNS via nginx
+  alb_target_group_arns = module.alb.target_group_arns_map
+
+  # Secret ARNs for ECS task execution role
+  database_secret_arn = module.secrets.database_secret_arn
+  keycloak_secret_arn = module.secrets.keycloak_secret_arn
+  kms_key_arns        = compact([module.secrets.kms_key_arn])
 
   # Database configuration
   database_host     = module.rds.endpoint
@@ -186,14 +218,29 @@ module "ecs" {
 
   # Service sizing
   service_desired_count = var.ecs_service_desired_count
-  task_cpu             = var.ecs_task_cpu
-  task_memory          = var.ecs_task_memory
+  task_cpu              = var.ecs_task_cpu
+  task_memory           = var.ecs_task_memory
 
   # Keycloak configuration
-  keycloak_url         = var.keycloak_url
-  keycloak_realm       = var.keycloak_realm
-  keycloak_client_id   = var.keycloak_client_id
+  keycloak_url           = var.keycloak_url
+  keycloak_realm         = var.keycloak_realm
+  keycloak_client_id     = var.keycloak_client_id
   keycloak_client_secret = var.keycloak_client_secret
+}
 
-  tags = local.common_tags
+# Observability — CloudWatch dashboards, alarms, and log groups
+module "observability" {
+  source = "./modules/observability"
+
+  name_prefix = local.name_prefix
+  environment = var.environment
+  aws_region  = var.aws_region
+  vpc_id      = module.vpc.vpc_id
+
+  ecs_cluster_name = module.ecs.cluster_name
+  rds_instance_id  = module.rds.instance_id
+  alb_arn_suffix   = module.alb.alb_arn_suffix
+
+  kms_key_arn = module.secrets.kms_key_arn
+  alarm_email = var.alarm_email
 }

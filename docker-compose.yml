@@ -633,6 +633,13 @@ services:
     environment:
       - VITE_API_URL=
       - VITE_ENABLE_DEV_AUTH=true
+      # Service hostnames for nginx upstream substitution (docker-compose network names)
+      - CONTROLS_SERVICE_HOST=controls
+      - FRAMEWORKS_SERVICE_HOST=frameworks
+      - POLICIES_SERVICE_HOST=policies
+      - TPRM_SERVICE_HOST=tprm
+      - TRUST_SERVICE_HOST=trust
+      - AUDIT_SERVICE_HOST=audit
     depends_on:
       - controls
     networks:

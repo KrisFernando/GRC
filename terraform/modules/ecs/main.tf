@@ -1142,7 +1142,7 @@ resource "aws_ecs_task_definition" "frontend" {
 
       portMappings = [
         {
-          containerPort = 3000
+          containerPort = 80
           protocol      = "tcp"
         }
       ]
@@ -1154,31 +1154,32 @@ resource "aws_ecs_task_definition" "frontend" {
         },
         {
           name  = "PORT"
-          value = "3000"
+          value = "80"
+        },
+        # Hostnames for nginx envsubst — resolve to Cloud Map DNS entries
+        {
+          name  = "CONTROLS_SERVICE_HOST"
+          value = "controls.${var.name_prefix}.local"
         },
         {
-          name  = "CONTROLS_SERVICE_URL"
-          value = "http://controls.${var.name_prefix}.local:3001"
+          name  = "FRAMEWORKS_SERVICE_HOST"
+          value = "frameworks.${var.name_prefix}.local"
         },
         {
-          name  = "FRAMEWORKS_SERVICE_URL"
-          value = "http://frameworks.${var.name_prefix}.local:3002"
+          name  = "POLICIES_SERVICE_HOST"
+          value = "policies.${var.name_prefix}.local"
         },
         {
-          name  = "POLICIES_SERVICE_URL"
-          value = "http://policies.${var.name_prefix}.local:3004"
+          name  = "TPRM_SERVICE_HOST"
+          value = "tprm.${var.name_prefix}.local"
         },
         {
-          name  = "TPRM_SERVICE_URL"
-          value = "http://tprm.${var.name_prefix}.local:3005"
+          name  = "TRUST_SERVICE_HOST"
+          value = "trust.${var.name_prefix}.local"
         },
         {
-          name  = "TRUST_SERVICE_URL"
-          value = "http://trust.${var.name_prefix}.local:3006"
-        },
-        {
-          name  = "AUDIT_SERVICE_URL"
-          value = "http://audit.${var.name_prefix}.local:3007"
+          name  = "AUDIT_SERVICE_HOST"
+          value = "audit.${var.name_prefix}.local"
         },
         {
           name  = "KEYCLOAK_URL"
@@ -1204,7 +1205,7 @@ resource "aws_ecs_task_definition" "frontend" {
       }
 
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:80/health || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
@@ -1233,10 +1234,13 @@ resource "aws_ecs_service" "controls" {
     assign_public_ip = false
   }
 
-  load_balancer {
-    target_group_arn = var.alb_target_group_arns["controls"]
-    container_name   = "controls"
-    container_port   = 3001
+  dynamic "load_balancer" {
+    for_each = var.alb_target_group_arns["controls"] != "" ? [1] : []
+    content {
+      target_group_arn = var.alb_target_group_arns["controls"]
+      container_name   = "controls"
+      container_port   = 3001
+    }
   }
 
   service_registries {
@@ -1277,10 +1281,13 @@ resource "aws_ecs_service" "frameworks" {
     assign_public_ip = false
   }
 
-  load_balancer {
-    target_group_arn = var.alb_target_group_arns["frameworks"]
-    container_name   = "frameworks"
-    container_port   = 3002
+  dynamic "load_balancer" {
+    for_each = var.alb_target_group_arns["frameworks"] != "" ? [1] : []
+    content {
+      target_group_arn = var.alb_target_group_arns["frameworks"]
+      container_name   = "frameworks"
+      container_port   = 3002
+    }
   }
 
   service_registries {
@@ -1321,10 +1328,13 @@ resource "aws_ecs_service" "policies" {
     assign_public_ip = false
   }
 
-  load_balancer {
-    target_group_arn = var.alb_target_group_arns["policies"]
-    container_name   = "policies"
-    container_port   = 3004
+  dynamic "load_balancer" {
+    for_each = var.alb_target_group_arns["policies"] != "" ? [1] : []
+    content {
+      target_group_arn = var.alb_target_group_arns["policies"]
+      container_name   = "policies"
+      container_port   = 3004
+    }
   }
 
   service_registries {
@@ -1365,10 +1375,13 @@ resource "aws_ecs_service" "tprm" {
     assign_public_ip = false
   }
 
-  load_balancer {
-    target_group_arn = var.alb_target_group_arns["tprm"]
-    container_name   = "tprm"
-    container_port   = 3005
+  dynamic "load_balancer" {
+    for_each = var.alb_target_group_arns["tprm"] != "" ? [1] : []
+    content {
+      target_group_arn = var.alb_target_group_arns["tprm"]
+      container_name   = "tprm"
+      container_port   = 3005
+    }
   }
 
   service_registries {
@@ -1409,10 +1422,13 @@ resource "aws_ecs_service" "trust" {
     assign_public_ip = false
   }
 
-  load_balancer {
-    target_group_arn = var.alb_target_group_arns["trust"]
-    container_name   = "trust"
-    container_port   = 3006
+  dynamic "load_balancer" {
+    for_each = var.alb_target_group_arns["trust"] != "" ? [1] : []
+    content {
+      target_group_arn = var.alb_target_group_arns["trust"]
+      container_name   = "trust"
+      container_port   = 3006
+    }
   }
 
   service_registries {
@@ -1453,10 +1469,13 @@ resource "aws_ecs_service" "audit" {
     assign_public_ip = false
   }
 
-  load_balancer {
-    target_group_arn = var.alb_target_group_arns["audit"]
-    container_name   = "audit"
-    container_port   = 3007
+  dynamic "load_balancer" {
+    for_each = var.alb_target_group_arns["audit"] != "" ? [1] : []
+    content {
+      target_group_arn = var.alb_target_group_arns["audit"]
+      container_name   = "audit"
+      container_port   = 3007
+    }
   }
 
   service_registries {
@@ -1500,7 +1519,7 @@ resource "aws_ecs_service" "frontend" {
   load_balancer {
     target_group_arn = var.alb_target_group_arns["frontend"]
     container_name   = "frontend"
-    container_port   = 3000
+    container_port   = 80
   }
 
   deployment_configuration {

@@ -2,12 +2,12 @@
 
 output "application_url" {
   description = "URL to access the GRC application"
-  value       = var.enable_https ? "https://${module.alb.dns_name}" : "http://${module.alb.dns_name}"
+  value       = var.enable_https ? "https://${module.alb.alb_dns_name}" : "http://${module.alb.alb_dns_name}"
 }
 
 output "load_balancer_dns" {
   description = "DNS name of the load balancer"
-  value       = module.alb.dns_name
+  value       = module.alb.alb_dns_name
 }
 
 output "database_endpoint" {
@@ -44,7 +44,7 @@ output "deployment_instructions" {
 
     Next steps:
     1. Point your domain to the load balancer: ${module.alb.dns_name}
-    2. Access the application at: ${var.enable_https ? "https" : "http"}://${module.alb.dns_name}
+    2. Access the application at: ${var.enable_https ? "https" : "http"}://${module.alb.alb_dns_name}
     3. Configure Keycloak with the provided endpoints
     4. Run database migrations (see docs/deployment.md)
     5. Create your first organization and admin user

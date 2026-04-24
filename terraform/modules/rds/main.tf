@@ -16,7 +16,7 @@ resource "aws_db_subnet_group" "main" {
 # RDS Parameter Group
 resource "aws_db_parameter_group" "main" {
   name   = "${var.name_prefix}-db-params"
-  family = "postgres${var.engine_version}"
+  family = "postgres${split(".", var.engine_version)[0]}"
 
   # Performance and logging parameters
   parameter {
