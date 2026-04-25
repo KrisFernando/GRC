@@ -71,7 +71,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        service: [controls, frameworks, policies, tprm, trust, audit, frontend]
+        service: [controls, frameworks, policies, tprm, trust, audit, frontend, keycloak]
 
     permissions:
       id-token: write
@@ -113,6 +113,8 @@ jobs:
         run: |
           if [ "${{ matrix.service }}" == "frontend" ]; then
             echo "path=frontend/Dockerfile" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.service }}" == "keycloak" ]; then
+            echo "path=auth/Dockerfile" >> $GITHUB_OUTPUT
           else
             echo "path=services/${{ matrix.service }}/Dockerfile" >> $GITHUB_OUTPUT
           fi
@@ -173,6 +175,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Built Images" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          for service in controls frameworks policies tprm trust audit frontend; do
+          for service in controls frameworks policies tprm trust audit frontend keycloak; do
             echo "- \`grc-${service}:${{ needs.prepare.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           done

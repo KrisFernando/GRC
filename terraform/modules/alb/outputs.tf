@@ -44,6 +44,11 @@ output "target_group_arns_map" {
   }
 }
 
+output "listener_http_arn" {
+  description = "ARN of the HTTP listener"
+  value       = aws_lb_listener.http.arn
+}
+
 output "listener_https_arn" {
   description = "ARN of the HTTPS listener (null when HTTPS disabled)"
   value       = var.enable_https ? aws_lb_listener.https[0].arn : null

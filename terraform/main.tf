@@ -49,6 +49,13 @@ locals {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+  # Compute Keycloak URL from ALB DNS when not explicitly set in tfvars.
+  # Keycloak is deployed at /auth on the same ALB as the frontend.
+  keycloak_url = var.keycloak_url != "" ? var.keycloak_url : (
+    var.enable_https
+      ? "https://${module.alb.alb_dns_name}/auth"
+      : "http://${module.alb.alb_dns_name}/auth"
+  )
 }
 
 # VPC and Networking
@@ -163,7 +170,7 @@ module "secrets" {
   redis_port     = module.redis.port
   redis_password = module.redis.auth_token
 
-  keycloak_url            = var.keycloak_url
+  keycloak_url            = local.keycloak_url
   keycloak_realm          = var.keycloak_realm
   keycloak_client_id      = var.keycloak_client_id
   keycloak_client_secret  = var.keycloak_client_secret
@@ -222,10 +229,46 @@ module "ecs" {
   task_memory           = var.ecs_task_memory
 
   # Keycloak configuration
-  keycloak_url           = var.keycloak_url
+  keycloak_url           = local.keycloak_url
   keycloak_realm         = var.keycloak_realm
   keycloak_client_id     = var.keycloak_client_id
   keycloak_client_secret = var.keycloak_client_secret
+}
+
+# Keycloak Identity Provider — ECS Fargate service with path-based ALB routing
+module "keycloak" {
+  source = "./modules/keycloak"
+
+  name_prefix        = local.name_prefix
+  environment        = var.environment
+  aws_region         = var.aws_region
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  security_group_ids = [module.security_groups.ecs_security_group_id]
+
+  ecs_cluster_arn                = module.ecs.cluster_arn
+  service_discovery_namespace_id = module.ecs.service_discovery_namespace_id
+
+  listener_http_arn  = module.alb.listener_http_arn
+  listener_https_arn = module.alb.listener_https_arn
+  enable_https       = var.enable_https
+
+  database_host     = module.rds.endpoint
+  database_port     = module.rds.port
+  database_name     = var.database_name
+  database_username = var.database_username
+  database_password = var.database_password
+
+  container_registry = var.container_registry
+  image_tag          = var.image_tag
+
+  task_cpu      = var.keycloak_task_cpu
+  task_memory   = var.keycloak_task_memory
+  desired_count = var.keycloak_desired_count
+
+  keycloak_admin_password    = var.keycloak_admin_password
+  keycloak_client_secret     = var.keycloak_client_secret
+  keycloak_mcp_client_secret = var.keycloak_mcp_client_secret
 }
 
 # Observability — CloudWatch dashboards, alarms, and log groups

@@ -235,8 +235,9 @@ variable "image_tag" {
 
 # Keycloak Configuration
 variable "keycloak_url" {
-  description = "Keycloak server URL"
+  description = "Keycloak public URL (e.g. https://yourdomain.com/auth). Leave empty to derive from ALB DNS."
   type        = string
+  default     = ""
 }
 
 variable "keycloak_realm" {
@@ -246,9 +247,9 @@ variable "keycloak_realm" {
 }
 
 variable "keycloak_client_id" {
-  description = "Keycloak client ID"
+  description = "Keycloak client ID for backend services"
   type        = string
-  default     = "grc-platform"
+  default     = "grc-services"
 }
 
 variable "keycloak_client_secret" {
@@ -285,4 +286,29 @@ variable "alarm_email" {
   description = "Email address for CloudWatch alarm notifications (leave empty to disable)"
   type        = string
   default     = ""
+}
+
+# Keycloak ECS service sizing
+variable "keycloak_task_cpu" {
+  description = "CPU units for the Keycloak ECS task (512 = 0.5 vCPU)"
+  type        = number
+  default     = 512
+}
+
+variable "keycloak_task_memory" {
+  description = "Memory in MB for the Keycloak ECS task"
+  type        = number
+  default     = 1024
+}
+
+variable "keycloak_desired_count" {
+  description = "Number of Keycloak task instances"
+  type        = number
+  default     = 1
+}
+
+variable "keycloak_mcp_client_secret" {
+  description = "Secret for the grc-mcp Keycloak client (injected as GRC_MCP_SECRET into the realm)"
+  type        = string
+  sensitive   = true
 }

@@ -4,8 +4,8 @@
 # Prerequisites before running terraform apply:
 #   1. CloudFormation stack already deployed (creates S3 state bucket, DynamoDB table, ECR repos, IAM OIDC role)
 #   2. ACM certificate issued in us-east-1 for your domain (or set enable_https = false initially)
-#   3. Keycloak running and reachable at keycloak_url
-#   4. GitHub Actions secrets set: AWS_ROLE_ARN, ECR_REGISTRY
+#   3. GitHub Actions secrets/vars set: AWS_ROLE_ARN (secret), ECR_REGISTRY (var), AWS_REGION (var)
+#   4. Push all 8 container images to ECR by triggering the GitHub Actions workflow
 
 # General Configuration
 project_name = "gigachad-grc"
@@ -60,21 +60,31 @@ container_registry = "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
 image_tag          = "latest"
 
 # Keycloak Configuration
-keycloak_url           = "https://auth.yourdomain.com"
-keycloak_realm         = "gigachad-grc"
-keycloak_client_id     = "grc-services"
-keycloak_client_secret = "CHANGE_ME_KEYCLOAK_CLIENT_SECRET"
+# Keycloak runs as an ECS service at /auth on the same ALB as the frontend.
+# Leave keycloak_url empty to auto-derive from ALB DNS (recommended),
+# or set explicitly to your custom domain: "https://yourdomain.com/auth"
+keycloak_url       = ""
+keycloak_realm     = "gigachad-grc"
+keycloak_client_id = "grc-services"
+
+# Keycloak ECS sizing (Keycloak needs at least 512 CPU and 1024 MB)
+keycloak_task_cpu      = 512
+keycloak_task_memory   = 1024
+keycloak_desired_count = 1
 
 # -----------------------------------------------------------------------
 # Sensitive secrets — use environment variables or a secrets backend
 # instead of committing real values here.
 # Generate with: openssl rand -hex 32  (for encryption_key)
 #                openssl rand -base64 64 (for jwt_secret, session_secret)
+#                openssl rand -hex 32  (for keycloak client secrets)
 # -----------------------------------------------------------------------
-keycloak_admin_password = "CHANGE_ME_KEYCLOAK_ADMIN_PASSWORD"
-jwt_secret              = "CHANGE_ME_BASE64_JWT_SECRET"
-encryption_key          = "CHANGE_ME_HEX_ENCRYPTION_KEY"
-session_secret          = "CHANGE_ME_BASE64_SESSION_SECRET"
+keycloak_admin_password    = "CHANGE_ME_KEYCLOAK_ADMIN_PASSWORD"
+keycloak_client_secret     = "CHANGE_ME_GRC_SERVICES_CLIENT_SECRET"
+keycloak_mcp_client_secret = "CHANGE_ME_GRC_MCP_CLIENT_SECRET"
+jwt_secret                 = "CHANGE_ME_BASE64_JWT_SECRET"
+encryption_key             = "CHANGE_ME_HEX_ENCRYPTION_KEY"
+session_secret             = "CHANGE_ME_BASE64_SESSION_SECRET"
 
 # CloudWatch alarm notifications (leave empty to disable)
 alarm_email = ""
