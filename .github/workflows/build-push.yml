@@ -9,11 +9,12 @@ on:
       environment:
         description: 'Target environment'
         required: true
-        default: 'staging'
+        default: 'nprd'
         type: choice
         options:
-          - staging
-          - production
+          - poc
+          - nprd
+          - prd
 
 env:
   NODE_VERSION: '20'
@@ -59,9 +60,9 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "environment=prd" >> $GITHUB_OUTPUT
           else
-            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "environment=nprd" >> $GITHUB_OUTPUT
           fi
 
   # Build and push Docker images

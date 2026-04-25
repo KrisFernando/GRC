@@ -106,7 +106,7 @@ module "rds" {
 
   name_prefix        = local.name_prefix
   vpc_id             = module.vpc.vpc_id
-  private_subnet_ids = module.vpc.private_subnet_ids
+  subnet_ids         = module.vpc.private_subnet_ids
   security_group_ids = [module.security_groups.rds_security_group_id]
 
   engine_version        = var.rds_engine_version
@@ -130,7 +130,7 @@ module "redis" {
 
   name_prefix        = local.name_prefix
   vpc_id             = module.vpc.vpc_id
-  private_subnet_ids = module.vpc.private_subnet_ids
+  subnet_ids         = module.vpc.private_subnet_ids
   security_group_ids = [module.security_groups.redis_security_group_id]
 
   node_type       = var.redis_node_type

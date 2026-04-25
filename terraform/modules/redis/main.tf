@@ -48,9 +48,8 @@ resource "aws_elasticache_cluster" "main" {
   port                 = 6379
 
   # Network and security
-  subnet_group_name          = aws_elasticache_subnet_group.main.name
-  security_group_ids         = var.security_group_ids
-  automatic_failover_enabled = var.num_cache_nodes > 1 ? true : false
+  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  security_group_ids = var.security_group_ids
 
   # Maintenance and backup
   maintenance_window = "mon:03:00-mon:04:00"
@@ -92,8 +91,9 @@ resource "aws_elasticache_cluster" "main" {
 
 # Random auth token for Redis
 resource "random_password" "redis_auth_token" {
-  length  = 32
-  special = true
+  length           = 32
+  special          = true
+  override_special = "!#$%^&*()-_=+[]{}<>:?"
 }
 
 # SNS Topic for ElastiCache notifications

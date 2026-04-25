@@ -9,7 +9,7 @@
 
 # General Configuration
 project_name = "gigachad-grc"
-environment  = "production"
+environment  = "nprd"
 aws_region   = "us-east-1"
 
 # Network Configuration
